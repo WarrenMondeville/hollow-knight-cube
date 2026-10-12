@@ -33,8 +33,10 @@ function doAttack() {
 function slashRect() {
   const player = HK.player;
   const ext = (ch('longnail') ? 1 : 0) + (ch('pride') ? 2 : 0);
-  if (player.atkDir === 'up') return { x: player.x, y: player.y + 2.2, w: 2.3 + ext, h: 2.4 + ext * .5 };
-  if (player.atkDir === 'down') return { x: player.x, y: player.y - 1.2, w: 2.0 + ext * .5, h: 2.4 + ext };
+  /* 上劈 / 下劈只打**正上 / 正下**：判定盒收成一根竖直的柱子（宽度只比骑士略宽），
+     不像以前那样是个正方形、连带扫到斜上 / 斜下方。纵向可及范围没动。 */
+  if (player.atkDir === 'up') return { x: player.x, y: player.y + 2.2, w: 1.8 + ext * .8, h: 2.4 + ext * .5 };
+  if (player.atkDir === 'down') return { x: player.x, y: player.y - 1.2, w: 1.8 + ext * .5, h: 2.4 + ext };
   return { x: player.x + player.facing * (1.7 + ext * .5), y: player.y + .9, w: 2.9 + ext, h: 2.3 };
 }
 /* 统一伤害入口（骨钉 / 剑气 / 荆棘 / 臭气 / 孢子 / 召唤物共用） */

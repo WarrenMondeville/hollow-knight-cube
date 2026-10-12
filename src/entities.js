@@ -57,11 +57,15 @@ const slashes = [];
 function spawnSlash(dir) {
   const s = new THREE.Mesh(new THREE.PlaneGeometry(3, 3),
     new THREE.MeshBasicMaterial({ map: slashTex(), transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+  /* 上下劈是**正上 / 正下**的竖直弧，不带斜角。
+     贴图本身是「）」形的弧（凸向 +x），绕 z 转 ∓90° 后凸向就变成正上 / 正下；
+     横向偏移 ox 也必须是 0（以前上劈 .2、横劈 1.7，会把弧推到斜前方）。 */
   let ox = 1.7, oy = .9, rot = 0;
-  if (dir === 'up') { ox = .2; oy = 1.9; rot = .9; }
-  if (dir === 'down') { ox = .2; oy = -.5; rot = -.9; }
+  if (dir === 'up') { ox = 0; oy = 1.9; rot = Math.PI / 2; }
+  if (dir === 'down') { ox = 0; oy = -.5; rot = -Math.PI / 2; }
   s.position.set(player.x + player.facing * ox, player.y + oy, 1.2);
   s.rotation.z = rot;
+  /* 只有横劈需要按朝向镜像；上下劈左右对称，镜像了反而会看着偏 */
   if (player.facing < 0 && dir === 'side') s.rotation.y = Math.PI;
   scene.add(s);
   slashes.push({ m: s, t: 0, tl: .16 });
