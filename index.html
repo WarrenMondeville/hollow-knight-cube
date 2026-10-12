@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050912">
+<link rel="icon" href="data:,">
+<title>空洞骑士 · CUBE 横版复刻</title>
+<style>
+:root{color-scheme:dark;--ink:#dff4ff;--muted:#7e95b5;--red:#ff3b4b;--gold:#ffd45a;--bg:#050912;--line:#2a4a6e}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Courier New","Microsoft YaHei",monospace;overflow:hidden}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;width:100%;height:100%}
+/* 扫描线 + 暗角 */
+#film{position:fixed;inset:0;pointer-events:none;z-index:5;
+  background:repeating-linear-gradient(0deg,transparent 0 3px,#00000014 3px 4px);
+  box-shadow:inset 0 0 180px #01030acc}
+#flash{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0;transition:opacity .28s}
+#flash.hurt{background:radial-gradient(ellipse at center,transparent 40%,#c1161633 75%,#c1161e88);opacity:1;transition:opacity .05s}
+#flash.heal{background:radial-gradient(ellipse at center,#ffffff2e 0%,transparent 70%);opacity:1;transition:opacity .05s}
+/* HUD */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:8;font-size:14px;text-shadow:0 0 6px #0009}
+#masks{position:absolute;top:18px;left:20px;display:flex;gap:7px}
+.mask{width:22px;height:22px;background:var(--red);border:2px solid #ff8c96;box-shadow:0 0 10px #ff3b4bcc,2px 2px 0 #5e0a10;transition:all .15s}
+.mask.lb{background:#3fa7ff;border-color:#9ad4ff;box-shadow:0 0 10px #3fa7ffcc,2px 2px 0 #0a2a5e}
+.mask.off{background:#1a2233;border-color:#33415c;box-shadow:none}
+#soulwrap{position:absolute;top:16px;left:20px;transform:translateY(-2px) translateX(160px);display:flex;align-items:center;gap:8px}
+#soulorb{width:30px;height:30px;border-radius:50%;border:2px solid #cfe8ff;background:conic-gradient(#eaf7ff var(--p,0%),#0e1828 0);box-shadow:0 0 12px #9fd4ff88}
+#geo{position:absolute;top:52px;left:20px;color:#cfe8ff;letter-spacing:1px;font-weight:bold}
+#geo:before{content:"◈ ";color:#ffe08a}
+#timer{position:absolute;top:76px;left:20px;color:var(--muted);font-size:11px;letter-spacing:1px}
+#hint{position:absolute;bottom:16%;left:50%;transform:translateX(-50%);color:#bfe3ff;font-size:13px;letter-spacing:2px;opacity:0;transition:opacity .4s}
+#bossbar{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);width:min(560px,72vw);height:12px;border:2px solid #cfe8ff;background:#0a1220;display:none;box-shadow:0 0 14px #6fb9ff66}
+#bossfill{height:100%;width:100%;background:linear-gradient(#ff6b6b,#c81f2e);transition:width .15s}
+#bossname{position:absolute;bottom:44px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:4px;color:#ffb9b9;display:none}
+#minimap{position:absolute;top:16px;left:50%;transform:translateX(-50%);width:240px;height:26px;display:none}
+/* 手柄状态徽标（连接/断开时短暂浮现） */
+#gpbadge{position:absolute;top:16px;right:18px;max-width:250px;padding:4px 9px;font-size:11px;letter-spacing:1px;
+  color:#bfe3ff;background:#0a1526cc;border:2px solid #3a5f8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  opacity:0;transition:opacity .35s}
+#gpbadge.on{opacity:1}
+/* 护符菜单 */
+#charmov{z-index:11;background:#02040acc;backdrop-filter:blur(2px)}
+#charmov .panel{max-width:900px;width:92vw;max-height:88vh;overflow:auto;padding:20px 24px}
+#charmov h1{font-size:20px}
+#notchline{color:var(--gold);font-size:13px;letter-spacing:2px;margin:8px 0 14px}
+#charmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;text-align:left}
+.charm{border:2px solid #2a4a6e;background:#0a1526;padding:8px 10px;cursor:pointer;transition:border-color .12s}
+.charm:hover{border-color:#6fb9ff}
+.charm.on{border-color:var(--gold);background:#1a2440;box-shadow:0 0 10px #ffd45a33}
+.charm.lock{opacity:.35;cursor:default}
+.charm .cname{font-size:13px;color:var(--ink)}
+.charm.on .cname{color:var(--gold)}
+/* 手柄方向键选中的护符（选中态由 gamepad.js 维护） */
+.charm.sel{border-color:#eaf7ff;box-shadow:0 0 0 2px #58b8ff99,0 0 16px #58b8ff66}
+.charm .cost{font-size:11px;color:#6fb9ff;letter-spacing:1px;margin:3px 0}
+.charm .cdesc{font-size:11px;color:#7e95b5;line-height:1.6}
+#charmov .tip{margin-top:12px;font-size:11px;color:#687d9e}
+/* ===== 关卡编辑器（tilemap） ===== */
+body.editing #hud,body.editing #touch{display:none}
+#editorUI{position:fixed;top:0;left:0;right:0;z-index:9;padding:9px 14px 11px;
+  background:linear-gradient(#050b16f7,#050b16cc);border-bottom:2px solid #2a4a6e;
+  font-size:12px;user-select:none;-webkit-user-select:none}
+#editorUI.hidden{display:none}
+.ed-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ed-head b{font-size:14px;letter-spacing:2px;color:#eaf7ff}
+.ed-head .ed-sub{font-size:10px;color:#5f7ea6;letter-spacing:2px}
+.ed-tools{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.ed-tools button{font:inherit;font-size:11px;color:#cfe8ff;background:#101d36;
+  border:2px solid #3a5f8a;padding:5px 10px;cursor:pointer;transition:background .12s,border-color .12s}
+.ed-tools button:hover{border-color:#6fb9ff;background:#1a2b4c}
+.ed-tools button.primary{border-color:var(--gold);color:#ffe08a}
+.ed-tools button.primary:hover{background:#2a2410}
+#ed-palette{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.ed-tile{font:inherit;font-size:11px;color:#cfe8ff;background:#0c1728;border:2px solid #2a4a6e;
+  padding:5px 8px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.ed-tile:hover{border-color:#6fb9ff}
+.ed-tile.on{border-color:var(--gold);background:#1a2440;color:#ffe08a}
+.ed-tile .sw{width:12px;height:12px;border:1px solid #0006;display:inline-block}
+.ed-tile em{font-style:normal;font-size:9px;color:#5f7ea6;border:1px solid #2a4a6e;
+  padding:0 3px;line-height:1.4;border-radius:2px}
+#ed-stats{margin-top:8px;font-size:11px;color:#7e95b5;letter-spacing:1px}
+.ed-help{margin-top:5px;font-size:10px;color:#5f7ea6;line-height:1.8}
+#jsonov{z-index:12}
+#jsonarea{width:100%;height:min(46vh,320px);background:#02060f;color:#bfe3ff;
+  border:2px solid #2a4a6e;font-family:inherit;font-size:11px;padding:10px;resize:vertical;margin:12px 0}
+#jsonov .ed-tools{margin-left:0;justify-content:center}
+#jsonov p{font-size:11px;margin:4px 0 0;color:#7e95b5;line-height:1.7;min-height:1.5em}
+#jsonov button.hidden{display:none}
+#jsonov button:disabled{opacity:.45;cursor:default}
+#file-title small{pointer-events:none}
+/* 覆盖层 */
+.overlay{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:#02040aee;text-align:center}
+.overlay.hidden{display:none}
+.panel{border:3px solid #3a5f8a;background:#081124;box-shadow:8px 8px #010409,0 0 40px #123a6b55;padding:34px 44px;max-width:640px}
+.panel h1{font-size:30px;margin:0 0 6px;color:#eaf7ff;text-shadow:0 0 18px #58b8ff88,3px 3px #0a2a4a;letter-spacing:3px}
+.panel h1 small{display:block;font-size:11px;color:var(--muted);letter-spacing:5px;margin-top:8px;font-weight:normal}
+.panel p{font-size:12px;color:#9db8d8;line-height:2;margin:14px 0}
+.panel .keys{display:inline-block;text-align:left;font-size:12px;line-height:2;color:#9db8d8;border-top:2px solid #22385c;border-bottom:2px solid #22385c;padding:10px 6px;margin:6px 0}
+.panel b{color:var(--ink)}
+.panel .go{margin-top:14px;color:var(--gold);font-size:14px;letter-spacing:3px;animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+#deadt{color:#ff8896}#deadp{display:none}
+#pauseov .panel{padding:22px 40px}
+/* 触屏按钮 */
+#touch{position:fixed;inset:auto 0 0 0;z-index:9;display:none;grid-template-columns:1fr 1fr 1fr 1fr 1.4fr;gap:8px;padding:10px 12px 14px}
+#touch button{min-height:56px;font-size:13px;font-weight:bold;color:var(--ink);background:#101d36cc;border:2px solid #3a5f8a;touch-action:none;user-select:none;-webkit-user-select:none}
+#touch button.active{background:#24406e;transform:translate(1px,1px)}
+body.touch #touch{display:grid}
+@media(max-width:640px){.panel{padding:20px 18px;max-width:92vw}.panel h1{font-size:22px}.panel .keys{font-size:11px}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="film"></div>
+<div id="flash"></div>
+
+<div id="hud">
+  <div id="masks"></div>
+  <div id="soulwrap"><div id="soulorb"></div></div>
+  <div id="geo">0</div>
+  <div id="timer">00:00</div>
+  <div id="hint"></div>
+  <div id="bossname">假 · 骑士</div>
+  <div id="bossbar"><div id="bossfill"></div></div>
+  <canvas id="minimap" width="240" height="26"></canvas>
+  <div id="gpbadge"></div>
+</div>
+
+<div id="touch">
+  <button data-k="left">◀</button><button data-k="right">▶</button>
+  <button data-k="dash">⇥</button><button data-k="jump">▲</button><button data-k="attack">✦ 攻击</button>
+</div>
+
+<div class="overlay" id="titleov">
+  <div class="panel">
+    <h1>空洞骑士 · CUBE<small>HOLLOW CUBE / THREE.JS 纯 2D 横版复刻 DEMO</small></h1>
+    <div class="keys">
+      <b>移动</b> A / D　<b>跳跃</b> W / 空格 / Z（可二段跳）<br>
+      <b>攻击</b> X / J（按 W 上劈、按 S 空中下劈反弹）<br>
+      <b>冲刺</b> C / Shift　<b>凝聚回血</b> 长按 F（消耗灵魂）<br>
+      <b>互动</b> E（座椅）　<b>护符</b> Tab　<b>暂停</b> P　<b>音效</b> M<br>
+      <b>关卡编辑器</b> ` 或 F2（瓦片绘制 / JSON 与 Tiled .tmx 双向导入导出）<br>
+      <b>手柄</b> 左摇杆/十字键 移动　<b>A</b> 跳（上方向同时上劈）　<b>X</b> 攻击　<b>B</b> 冲刺<br>
+      　　　　<b>Y</b> 长按凝聚　<b>A</b> 座椅互动　<b>Back</b> 护符　<b>Start</b> 暂停（改为 <b>LB/RB</b> 攻击/冲刺）
+    </div>
+    <p>挥动骨钉斩击敌人，汲取灵魂凝聚治愈。穿过蓝色废墟，击败尽头的假骑士。</p>
+    <div class="go">— 按 ENTER / 手柄 A 开始 —</div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="deadov">
+  <div class="panel">
+    <h1 id="deadt">梦 已 破 碎</h1>
+    <p>在废墟的微光中重新凝聚……</p>
+    <div class="go">即将重生</div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="winov">
+  <div class="panel">
+    <h1 style="color:#ffe08a">假骑士 已倒下</h1>
+    <p id="stats"></p>
+    <div class="go">— 按 ENTER / 手柄 A 再来一次 —</div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pauseov">
+  <div class="panel"><h1 style="font-size:22px">暂 停</h1><div class="go">按 P / 手柄 Start 继续</div></div>
+</div>
+
+<div class="overlay hidden" id="charmov">
+  <div class="panel">
+    <h1 style="font-size:22px">护 符</h1>
+    <div id="notchline"></div>
+    <div id="charmgrid"></div>
+    <div class="tip">点击装备 / 卸下（共 5 个槽位） · Tab 或 Esc 关闭 · 手柄：方向键选择 + A 装备 · 部分护符效果需在座椅处生效（生命血 / 巴德尔之壳）</div>
+  </div>
+</div>
+
+<!-- ===== 关卡编辑器面板 ===== -->
+<div id="editorUI" class="hidden">
+  <div class="ed-head">
+    <b>关卡编辑器</b><span class="ed-sub">TILEMAP</span>
+    <div class="ed-tools">
+      <button data-cmd="save">保存</button>
+      <button data-cmd="load">读取</button>
+      <button data-cmd="export">JSON 导出</button>
+      <button data-cmd="import">JSON 导入</button>
+      <button data-cmd="tmxexport">TMX 导出</button>
+      <button data-cmd="tmximport">TMX 导入</button>
+      <button data-cmd="grid">网格</button>
+      <button data-cmd="reset">默认关卡</button>
+      <button data-cmd="test" class="primary">测试 ▶</button>
+    </div>
+  </div>
+  <div id="ed-palette"></div>
+  <div id="ed-stats"></div>
+  <div class="ed-help">
+    <b>左键</b> 涂 · <b>右键</b> 擦 · <b>Shift+左键</b> 矩形填充 · <b>中键拖拽 / WASD</b> 平移 · <b>滚轮</b> 缩放　|　
+    数字 <b>1-8</b> 选瓦片 · <b>9</b> 擦除 · <b>G</b> 网格 · <b>Ctrl+Z</b> 撤销 · <b>Ctrl+S</b> 保存 · <b>`</b> 或 <b>Esc</b> 退出<br>
+    支持 <b>Tiled .tmx</b> 互导：导出后可在 Tiled 里继续编辑再导入回来（CSV / base64+zlib / XML 数据、无限地图 chunk、对象层矩形与点均可读）
+  </div>
+</div>
+
+<!-- ===== 关卡文件（JSON / TMX）导入导出 ===== -->
+<div class="overlay hidden" id="jsonov">
+  <div class="panel" style="max-width:820px;width:92vw">
+    <h1 style="font-size:18px" id="file-title">关卡 JSON<small id="file-sub">复制文本框内容即可保存为 .json</small></h1>
+    <textarea id="jsonarea" spellcheck="false" placeholder='{"v":1,"tile":1,"tiles":{"0,0":"solid"}}'></textarea>
+    <div class="ed-tools">
+      <button id="jsoncopy">复制</button>
+      <button id="filedl">下载 .json</button>
+      <button id="dlpng" class="hidden">下载 tiles.png</button>
+      <button id="jsonpick">选择文件…</button>
+      <button id="jsonapply">应用导入</button>
+      <button id="jsonclose">关闭</button>
+    </div>
+    <p id="file-tip"></p>
+  </div>
+</div>
+
+<input type="file" id="tmxfile" accept=".tmx,.xml,.json,text/xml,application/xml,application/json" style="display:none">
+
+<script src="lib/three.min.js"></script>
+<!-- 模块化拆分：经典脚本 + window.HK 命名空间（无需构建，file:// 也可直接运行） -->
+<script src="src/core.js"></script>
+<script src="src/scene.js"></script>
+<script src="src/world.js"></script>
+<script src="src/entities.js"></script>
+<script src="src/input.js"></script>
+<script src="src/gamepad.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/charms.js"></script>
+<script src="src/combat.js"></script>
+<script src="src/main.js"></script>
+<script src="src/tmx.js"></script>
+<script src="src/editor.js"></script>
+</body>
+</html>
