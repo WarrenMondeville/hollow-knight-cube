@@ -1,5 +1,5 @@
 /* ============================================================
-   模块 5/12：input.js
+   模块 6/13：input.js
    键盘 / 触屏 / 手柄输入汇总 + 摄像机跟随与震屏 + 暂停
    ------------------------------------------------------------
    三种输入在这里汇总成同一套语义：held（持续按住）/ buffer（按下瞬间，
@@ -43,6 +43,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Tab' || e.code === 'KeyI') HK.toggleCharmMenu();
   if (e.code === 'Backquote' || e.code === 'F2') HK.toggleEditor();
   if (e.code === 'KeyM') { S.soundOn = !S.soundOn; HK.showHint(S.soundOn ? '音效 开' : '音效 关', 1); }
+  if (e.code === 'KeyN' && HK.music) { HK.showHint(HK.music.toggle() ? '音乐 开' : '音乐 关', 1); }
   if (e.code === 'Enter') {
     const a2 = HK.au(); if (a2 && a2.state === 'suspended') a2.resume();
     if (S.state === 'title' || S.state === 'win') HK.startGame();

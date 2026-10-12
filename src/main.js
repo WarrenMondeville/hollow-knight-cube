@@ -1,5 +1,5 @@
 /* ============================================================
-   模块 10/12：main.js
+   模块 11/13：main.js
    游戏状态机（重置 / 开局 / 受伤 / 死亡 / 座椅）/ 主循环 / 启动
    ============================================================ */
 (function (HK) {
@@ -71,6 +71,8 @@ function startGame() {
   updHUD();
   blockText('GO!', 14, 6.5);
   SFX.win();
+  /* 开局同时起 BGM（这里一定处于用户手势回调链上，AudioContext 能正常 resume） */
+  if (HK.music) HK.music.start();
 }
 function die() {
   const player = HK.player;
@@ -178,6 +180,8 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, .1); last = now;
   const player = HK.player;
   pollInput();
+  /* BGM：每秒每帧都要跑（音量随状态淡入淡出 / 必要时补 resume），与是否暂停无关 */
+  if (HK.music) HK.music.update();
   if (S.editor) {
     /* 编辑模式：只跑编辑器逻辑，世界冻结 */
     if (HK.editorTick) HK.editorTick(dt);

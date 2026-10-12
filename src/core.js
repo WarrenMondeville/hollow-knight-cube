@@ -1,13 +1,13 @@
 /* ============================================================
    空洞骑士 · CUBE 横版复刻  (three.js)
-   ---- 模块 1/12：core.js  基础工具 / 常量 / 音效 / 共享状态 ----
+   ---- 模块 1/13：core.js  基础工具 / 常量 / 音效 / 共享状态 ----
    ------------------------------------------------------------
    **纯 2D**：正交相机 + 平面网格 + 无光照材质，背景视差是手动模拟的
    （正交下没有真实视差），详见 scene.js。
    ------------------------------------------------------------
    该项目使用经典 <script> 拆分模块：所有模块通过全局命名空间
    window.HK 通信（不引入构建步骤，file:// 双击即可运行）。
-   模块加载顺序见 index.html（core → scene → world → entities
+   模块加载顺序见 index.html（core → music → scene → world → entities
    → input → gamepad → hud → charms → combat → main → tmx → editor）。
    ------------------------------------------------------------
    注意：用 Object.assign(HK, {...}) 暴露 getter/setter 会被拍平成
@@ -44,7 +44,8 @@ const S = {
   hintT: 0,
   shakeT: 0, shakeA: 0,
   timerAcc: 0,
-  soundOn: true
+  soundOn: true,       // 音效开关（M）
+  musicOn: true        // BGM 开关（N）—— 见 music.js
 };
 
 /* ---------------- 纯工具 ---------------- */

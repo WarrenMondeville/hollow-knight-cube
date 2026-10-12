@@ -1,5 +1,5 @@
 /* ============================================================
-   模块 9/12：combat.js
+   模块 10/13：combat.js
    攻击判定（四向骨钉 + 统一伤害入口）/ 敌人 AI / 玩家控制与更新
    ============================================================ */
 (function (HK) {
@@ -73,6 +73,7 @@ function bossDead(e) {
   setTimeout(() => {
     if (S.state !== 'play') return;
     S.state = 'win';
+    if (HK.music) HK.music.stop();       /* BGM 淡出，让胜利结算是安静的 */
     const m = Math.floor(S.playT / 60), s = Math.floor(S.playT % 60);
     $('stats').innerHTML = `用时 <b>${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</b> · 死亡 <b>${S.deaths}</b> · 击杀 <b>${S.kills}</b> · 吉欧 <b>${HK.player.geo}</b>`;
     $('winov').classList.remove('hidden');
